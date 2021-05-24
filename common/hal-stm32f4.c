@@ -81,6 +81,8 @@ static void send_USART_str(const char* in)
   }
   usart_send_blocking(USART2, '\n');
 }
+
+static volatile unsigned long long overflowcnt = 0;
 void hal_setup(const enum clock_mode clock)
 {
   clock_setup(clock);
@@ -88,17 +90,25 @@ void hal_setup(const enum clock_mode clock)
   usart_setup(115200);
   systick_setup();
   rng_enable();
+
+
+  // wait for the first systick overflow
+  // improves reliability of the benchmarking scripts since it makes it much
+  // less likely that the host will miss the start of the output
+  unsigned long long old = overflowcnt;
+  while(old == overflowcnt);
 }
+
 void hal_send_str(const char* in)
 {
   send_USART_str(in);
 }
 
-static volatile unsigned long long overflowcnt = 0;
 void sys_tick_handler(void)
 {
   ++overflowcnt;
 }
+
 uint64_t hal_get_time()
 {
   while (true) {
